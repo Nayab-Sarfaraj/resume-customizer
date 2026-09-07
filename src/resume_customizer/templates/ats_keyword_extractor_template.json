@@ -1,0 +1,15 @@
+{
+    "name": null,
+    "input_variables": [
+        "job_description_text"
+    ],
+    "optional_variables": [],
+    "output_parser": null,
+    "partial_variables": {},
+    "metadata": null,
+    "tags": null,
+    "template": "\n    Please identify the ATS keywords in the following job description text:\n    {job_description_text}\n    ",
+    "template_format": "f-string",
+    "validate_template": false,
+    "_type": "prompt"
+}
