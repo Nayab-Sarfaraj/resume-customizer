@@ -1,17 +1,9 @@
 import json
 from pathlib import Path
 from pydantic import BaseModel, Field
-from langchain_groq import ChatGroq
-from dotenv import load_dotenv
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.prompts import PromptTemplate
-
-load_dotenv()
-
-model = ChatGroq(
-    model="openai/gpt-oss-20b"
-)
-
+from resume_customizer.model import model
 
 class ATSKeywords(BaseModel):
     hard_skills: list[str] = Field(
@@ -66,7 +58,7 @@ def extract_ats_keywords(job_description_text: str) -> ATSKeywords:
     ]
 
     response = structured_model.invoke(messages)
-    print(f"Extracted ATS Keywords: {response}")
+    print(f"Extracted ATS Keywords: {response.hard_skills}")
     return response
 
 
