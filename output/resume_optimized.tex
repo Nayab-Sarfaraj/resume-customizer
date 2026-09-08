@@ -1,0 +1,221 @@
+%-------------------------
+% Resume in Latex
+% Author : Jake Gutierrez
+% Based off of: https://github.com/sb2nov/resume
+% License : MIT
+%------------------------
+
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\input{glyphtounicode}
+
+
+%----------FONT OPTIONS----------
+% sans-serif
+% \usepackage[sfdefault]{FiraSans}
+% \usepackage[sfdefault]{roboto}
+% \usepackage[sfdefault]{noto-sans}
+% \usepackage[default]{sourcesanspro}
+
+% serif
+% \usepackage{CormorantGaramond}
+% \usepackage{charter}
+
+
+\pagestyle{fancy}
+\fancyhf{} % clear all header and footer fields
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% Adjust margins
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-.5in}
+\addtolength{\textheight}{1.0in}
+
+\urlstyle{same}
+
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+% Sections formatting
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{-5pt}]
+
+% Ensure that generate pdf is machine readable/ATS parsable
+\pdfgentounicode=1
+
+%-------------------------
+% Custom commands
+\newcommand{\resumeItem}[1]{
+  \item\small{
+    {#1 \vspace{-2pt}}
+  }
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubSubheading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \textit{\small#1} & \textit{\small #2} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \small#1 & #2 \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubItem}[1]{\resumeItem{#1}\vspace{-4pt}}
+
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+
+%-------------------------------------------
+%%%%%%  RESUME STARTS HERE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\begin{document}
+
+%----------HEADING----------
+
+
+\begin{center}
+    \textbf{\Huge \scshape Nayab Sarfaraj} \\ \vspace{1pt}
+    \small +91 958-008-1529 $|$ \href{nayabsarfaraj@gmail.com}{\underline{nayabsarfaraj@gmail.com}} $|$ 
+    \href{https://www.linkedin.com/in/nayab-sarfaraj-856a70258/}{\underline{linkedin.com/in/nayab-sarfaraj}} $|$
+    \href{https://github.com/Nayab-Sarfaraj}{\underline{github.com/Nayab-Sarfaraj}}
+\end{center}
+
+
+
+\section{Summary}
+% \resumeItemListStart
+\resumeItem{\textbf{Full Stack Engineer} (\textbf{MERN} · \textbf{React Native} · \textbf{Node.js} · \textbf{Next.js}) with \textbf{1 year of production experience} at a \textbf{US-based SaaS startup}, building scalable APIs, SDK integrations, and AI-powered automation systems. Promoted from Intern to Associate Engineer in 3 months based on performance.
+}
+      % \resumeItemListEnd 
+%-----------PROGRAMMING SKILLS-----------
+\section{Technical Skills}
+ \begin{itemize}[leftmargin=0.15in, label={}]
+    \small{\item{
+     \textbf{Stack}{: \textbf{MERN Stack} (MongoDB, Express.js, React, Node.js), \textbf{React Native}, \textbf{Next.js}, \textbf{TypeScript}, \textbf{JavaScript}, HTML/CSS, \textbf{Python}} \\
+     \textbf{Backend}{: \textbf{Node.js}, \textbf{Express.js}, \textbf{REST APIs}, JWT Auth, \textbf{BullMQ}, async message queues, Zod, \textbf{FastAPI}} \\
+     \textbf{Database}{: \textbf{MongoDB}, \textbf{PostgreSQL}, MySQL, \textbf{Redis}, Supabase}\\
+     \textbf{Cloud \& DevOps}{: \textbf{Git}, GitHub, \textbf{GCP}, \textbf{AWS}, \textbf{CI/CD}, \textbf{Docker}}\\
+     \textbf{AI \& Integrations}{: LLM Integration, Inngest, NextAuth.js, Async workflows, Google OAuth, Streaming UI, \textbf{RAG}, \textbf{LangChain}, \textbf{Prompt Engineering}, \textbf{Pinecone}, \textbf{Razorpay}}
+    }}
+ \end{itemize}
+
+
+
+
+%-----------EXPERIENCE-----------
+\section{Experience}
+  \resumeSubHeadingListStart
+
+    \resumeSubheading
+      {Byldd (Software Engineer)}{Aug 2025 -- Aug 2026}
+      {New York, 10003, United States}{Remote}
+      \resumeItemListStart
+
+
+\resumeItem{\textbf{Promoted from Intern to Associate Engineer within 3 months} based on performance}
+\resumeItem{Built an \textbf{admin Next.js dashboard} for the medical networking platform, surfacing engagement analytics — DAU, match/response rates — across \textbf{20+ community groups}, enabling data-driven decisions on retention and group performance}
+
+\resumeItem{Built a \textbf{two-sided live tracking system} using \textbf{React Native}, \textbf{Node.js}, and \textbf{WebSockets} — \textbf{Google Navigation SDK} for washer-side routing, real-time location updates for user-side tracking — \textbf{delivered 4 days ahead} of estimated timeline}
+\resumeItem{Designed \textbf{ MongoDB} schemas and \textbf{Node REST APIs} for user session management and data storage -- optimized query performance by \textbf{$\sim$ 40\%} through indexing and schema restructuring}
+\resumeItem{Diagnosed a performance bottleneck via load testing with \textbf{Artillery} (1,000 reqs @ 50 req/s), then implemented \textbf{Redis caching} — cut avg response time \textbf{123.8ms → 1.7ms} (~73x) and P95 latency \textbf{290ms → 1ms}}
+\resumeItem{Built a \textbf{BullMQ} + \textbf{Redis} job queue to scrape, filter, and score Reddit posts as inbound leads for US clients — auto-drafted outreach via \textbf{LLM integration}, routed to Slack for approval, \textbf{saving ~10 hrs/week}}
+\resumeItem{Built \textbf{AI-powered chat features} — smart replies, conversation starters, multi-select polls — used by \textbf{500+ daily active users} in a production \textbf{React Native} medical networking app, extending the \textbf{CometChat v5 SDK}}
+
+      \resumeItemListEnd 
+
+    
+
+    % \resumeSubheading
+    %   {Hormone Insight Pvt. Ltd (Software Engineer Intern)}{Aug 2024 -- Sep 2024}
+    %   {Washington, USA}{Remote}
+    %   \resumeItemListStart
+    %    \resumeItem{Built and integrated \textbf{React Native} frontend components with \textbf{Node.js} auth APIs -- implemented JWT-based login flow, reduced onboarding page load time by 20\%, and fixed 3 critical user flow bugs}
+    %        \resumeItem{Built and integrated \textbf{React Native} frontend components with \textbf{Node.js} auth APIs -- implemented }
+    %   \resumeItemListEnd   
+
+    \resumeSubheading
+  {HashedBit Innovations (Software Engineer Intern)}{Jun 2025 -- Jul 2025}
+  {Remote}{}
+  \resumeItemListStart
+\resumeItem{Built \textbf{Next.js} modules and integrated \textbf{REST APIs} for a client \textbf{hotel management system}, streamlining booking and operational workflows and cutting redundant frontend-backend interactions by \textbf{~30\%}}
+    \resumeItem{Wrote and optimized \textbf{SQL} queries for data retrieval and reporting, improving query execution efficiency by \textbf{~25\%} and reducing feature turnaround time by \textbf{~20\%}}
+  \resumeItemListEnd
+
+  \resumeSubHeadingListEnd
+
+
+%-----------PROJECTS-----------
+\section{Projects}
+    \resumeSubHeadingListStart
+
+
+        \resumeProjectHeading
+    {\textbf{InstaCap} $|$ \emph{\textbf{Next.js}, BullMq, Redis, Remotion, MongoDB} $|$ \href{https://github.com/Nayab-Sarfaraj/caption-ai}{\textcolor{black}{\underline{GitHub}}} $|$ \href{https://getinstacap.com/}{\textcolor{black}{\underline{ Live Link}}}}{June 2026}
+    \resumeItemListStart
+    \resumeItem{Architected an async message queue system with 	extbf{BullMQ} on 	extbf{AWS EC2}, rendering video on 	extbf{AWS Lambda}, deploying Next.js on 	extbf{Vercel}, storing assets in Cloudflare R2, and authenticating via Clerk.}
+       \resumeItem{Built an AI \textbf{caption pipeline} using \textbf{Deepgram} for speech-to-text and \textbf{Remotion} for video rendering — live product with \textbf{25 users} and \textbf{~45 videos} rendered}
+
+    \resumeItemListEnd
+    
+            \resumeProjectHeading
+        {\textbf{Auto AI Shorts} $|$ \emph{React Native, Express.js, Remotion, Inngest, Mongoose} $|$ \href{https://github.com/Nayab-Sarfaraj/ai-youtube-shorts-backend}{\textcolor{black}{\underline{GitHub}}} $|$     \href{https://play.google.com/store/apps/details?id=com.alishanbyldd.AutoAIShorts}{\textcolor{black}{\underline{ Live Link}}}}{Apr 2025}
+          \resumeItemListStart
+           \resumeItem{Built a fully automated \textbf{short-form video pipeline} using \textbf{Inngest} async step functions — \textbf{orchestrates script → audio → image → video → render } compilation end-to-end with \textbf{zero manual steps}}
+            \resumeItem{Integrated an LLM to transform user prompts into structured video scripts}
+            
+         
+          \resumeItemListEnd
+
+     
+    \resumeSubHeadingListEnd
+
+
+
+%
+%-----------EDUCATION-----------
+\section{Education}
+  \resumeSubHeadingListStart
+    \resumeSubheading
+      {Dr. A.P.J. Abdul Kalam Technical University}{Lucknow, UP}
+      {B.Tech. in Computer Science and Engineering}{Nov. 2022 -- May 2026}
+   
+  \resumeSubHeadingListEnd
+
+
+%-------------------------------------------
+\end{document}
