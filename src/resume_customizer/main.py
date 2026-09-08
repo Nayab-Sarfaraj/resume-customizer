@@ -1,8 +1,6 @@
 import sys
-import shutil
-import subprocess
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 
 from resume_customizer.utils import read_file
 from resume_customizer.parser import extract_units
@@ -11,60 +9,10 @@ from resume_customizer.section_chains import rewrite_bullets
 from resume_customizer.merger import merge_rewrites, MergeResult
 
 
-def compile_latex(tex_path: Path, output_dir: Optional[Path] = None) -> Optional[Path]:
-    """
-    Attempts to compile the .tex file to PDF using tectonic or pdflatex if available.
-    Returns the Path to the compiled PDF, or None if no compiler is installed or compilation fails.
-    """
-    if output_dir is None:
-        output_dir = tex_path.parent
-    output_dir.mkdir(parents=True, exist_ok=True)
-    pdf_path = output_dir / f"{tex_path.stem}.pdf"
-
-    # 1. Check for Tectonic
-    tectonic_bin = shutil.which("tectonic")
-    if tectonic_bin:
-        print(f"[COMPILE] Compiling {tex_path.name} with Tectonic...")
-        res = subprocess.run(
-            [tectonic_bin, str(tex_path), "--outdir", str(output_dir)],
-            capture_output=True,
-            text=True
-        )
-        if res.returncode == 0 and pdf_path.exists():
-            print(f"[COMPILE SUCCESS] PDF generated at: {pdf_path}")
-            return pdf_path
-        else:
-            print(f"[COMPILE ERROR] Tectonic compilation failed:\n{res.stderr or res.stdout}")
-            return None
-
-    # 2. Fallback to pdflatex
-    pdflatex_bin = shutil.which("pdflatex")
-    if pdflatex_bin:
-        print(f"[COMPILE] Compiling {tex_path.name} with pdflatex...")
-        res = subprocess.run(
-            [pdflatex_bin, f"-output-directory={output_dir}", "-interaction=nonstopmode", str(tex_path)],
-            capture_output=True,
-            text=True
-        )
-        if res.returncode == 0 and pdf_path.exists():
-            print(f"[COMPILE SUCCESS] PDF generated at: {pdf_path}")
-            return pdf_path
-        else:
-            print(f"[COMPILE ERROR] pdflatex compilation failed:\n{res.stderr or res.stdout}")
-            return None
-
-    print(f"\n[COMPILE INFO] Neither 'tectonic' nor 'pdflatex' was found on your system.")
-    print(f"               Your optimized LaTeX file is saved at: {tex_path}")
-    print(f"               You can compile it online (e.g. Overleaf) or install Tectonic via:")
-    print(f"               cargo install tectonic   OR   winget install tectonic")
-    return None
-
-
 def customize_resume(
     job_description: str,
     resume_path: Path = Path(__file__).resolve().parents[2] / "resume.tex",
     output_dir: Path = Path(__file__).resolve().parents[2] / "output",
-    compile_pdf: bool = True,
 ) -> Dict[str, Any]:
     """
     End-to-end orchestration pipeline:
@@ -73,15 +21,14 @@ def customize_resume(
     3. Parse optimizable units and character spans
     4. Run 4 section chains in parallel via asyncio.gather with self-healing retries
     5. Reverse-offset slice and merge with pre- & post-merge validation gates
-    6. Compile to PDF if a compiler is available
     """
     try:
-        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stdout.reconfigure(encoding="utf-8", line_buffering=True)
     except Exception:
         pass
 
     print("=" * 65)
-    print("RESUME CUSTOMIZER PIPELINE: JD -> ATS -> LLMs -> MERGE -> COMPILE")
+    print("RESUME CUSTOMIZER PIPELINE: JD -> ATS -> LLMs -> MERGE")
     print("=" * 65)
 
     # Step 1: Read base resume
@@ -129,26 +76,51 @@ def customize_resume(
         print(f"Rejected Unit IDs:   {merge_result.rejected_ids}")
     print(f"Optimized LaTeX:     {merge_result.output_path}")
 
-    # Step 6: Compile
-    pdf_path = None
-    if compile_pdf:
-        print("\n" + "-" * 65)
-        print("COMPILATION")
-        print("-" * 65)
-        pdf_path = compile_latex(merge_result.output_path, output_dir=output_dir)
-
     return {
         "ats_keywords": ats_keywords,
         "merge_result": merge_result,
-        "pdf_path": pdf_path,
     }
 
 
 def main() -> None:
     sample_jd = (
-        "We are looking for a Senior Full Stack Engineer with strong experience in Python, "
-        "Next.js, Node.js, and Redis. Experience with async message queues, Docker, and AWS is a huge plus. "
-        "Must be a self-starter who excels at cross-functional communication and lead tracking systems."
+        """About Us:
+At Parsewave we're building advanced datasets that help train the next generation of coding AI systems. Our contributors are engineers, researchers, and developers who create and test problems that challenge models to think and act like real-world programmers
+So far this year, we've collaborated with engineers from across the world to craft realistic engineering environments, terminal workflows, and agentic debugging tasks used by leading AI research labs.
+About You:
+Just a few short questions before we proceed.
+Full Name:
+*
+Nayab Sarfaraj
+Email:
+*
+nayabsarfaraj@gmail.com
+Please provide your discord. 
+Discord: 
+*
+nay0961
+If you have a detailed Github / Personal Site the resume option becomes optional. 
+GitHub link (Even if empty! We need it for future steps)
+*
+https://github.com/Nayab-Sarfaraj
+Personal Portfolio / Site:
+https://portfolio-self-chi-m6v05x2bws.vercel.app/
+X Profile:
+https://x.com/NayabSarfaraj
+Which of the following skills are you familiar with? 
+*
+
+
+🐧 Linux, ubuntu, debian
+
+⚙️ Docker, docker-compose
+
+🐍 Python, pip, uv
+
+🖥️ Bash, zsh, sh
+
+🤖 Cursor, Claude code, Codex
+We are open to all language types, only familiarity with CLI is a necessity."""
     )
 
     # Allow custom JD via file argument if provided

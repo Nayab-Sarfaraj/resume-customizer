@@ -178,13 +178,36 @@ def extract_units(latex_text: str) -> List[ResumeUnit]:
                                 line_start_in_inner = inner_text.find(line_stripped, curr_offset)
                                 line_end_in_inner = line_start_in_inner + len(line_stripped)
                                 curr_offset = line_end_in_inner
-                                
-                                abs_line_start = sec_start + inner_start + line_start_in_inner
-                                abs_line_end = sec_start + inner_start + line_end_in_inner
 
                                 cat_match = re.search(r'\\textbf\{([^}]+)\}', line_stripped)
                                 category = cat_match.group(1) if cat_match else f"Skill-{skill_count}"
 
+                                # Structural Span Locking:
+                                # Scope unit strictly to the inner comma-separated skills list.
+                                # The prefix (e.g. \textbf{Stack}{:) and trailing suffix (}) are locked on disk.
+                                colon_brace_idx = line_stripped.find('{:')
+                                if colon_brace_idx != -1:
+                                    b_res = extract_braced_content(line_stripped, colon_brace_idx)
+                                    if b_res:
+                                        b_inner, b_s, b_e = b_res
+                                        colon_pos = b_inner.find(':')
+                                        clean_skills, adj_s, adj_e = strip_with_offsets(b_inner, colon_pos + 1, len(b_inner))
+                                        abs_skills_start = sec_start + inner_start + line_start_in_inner + b_s + adj_s
+                                        abs_skills_end = sec_start + inner_start + line_start_in_inner + b_s + adj_e
+
+                                        units.append({
+                                            "id": f"SKILL-{skill_count}",
+                                            "section": sec_name,
+                                            "context": category,
+                                            "text": clean_skills,
+                                            "span": (abs_skills_start, abs_skills_end)
+                                        })
+                                        skill_count += 1
+                                        continue
+
+                                # Fallback if line doesn't follow \textbf{Cat}{: ...} template pattern
+                                abs_line_start = sec_start + inner_start + line_start_in_inner
+                                abs_line_end = sec_start + inner_start + line_end_in_inner
                                 units.append({
                                     "id": f"SKILL-{skill_count}",
                                     "section": sec_name,

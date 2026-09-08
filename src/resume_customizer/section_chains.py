@@ -40,12 +40,22 @@ UNITS TO REWRITE (id: original text):
 
 RULES — NON-NEGOTIABLE:
 1. Return exactly one rewritten unit per input id. Never add, remove, or merge ids.
-2. Never invent, change, or remove any number, percentage, date, or metric. If the original says "40%", the rewrite must still say "40%" — not a different number, not removed.
-3. You may reword phrasing and insert a keyword from the list above ONLY if it is truthful to what the original bullet already claims. Do not claim a tool, skill, or outcome that isn't already implied by the original text.
-4. Preserve every LaTeX command exactly as-is — \\textbf{{}}, \\%, $\\sim$, →, and all brace structure. You are rewriting the English content inside commands, not the LaTeX syntax itself.
-5. Preserve original spacing/formatting quirks around commands even if they look inconsistent.
-6. If a unit has nothing relevant to improve for this job description, return it unchanged with "modified": false rather than forcing a keyword in.
-7. For Technical Skills units specifically: only APPEND relevant new items to the existing comma-separated list under its category. Never remove existing items, never restructure into prose.
+2. Tailor phrasing, framing, tools, and technical achievements to maximize ATS relevance.
+   CRITICAL METRIC RULE: NEVER invent, add, or alter any numbers, percentages, or quantitative metrics (e.g. latency numbers, user counts, percentages, team sizes, dollar amounts). All numbers from the original unit must remain strictly unchanged. If the original bullet has no numbers, do NOT introduce any. Any unit with new or modified numbers will fail automated validation and be discarded.
+3. Preserve every LaTeX command exactly as-is — \\textbf{{}}, \\%, $\\sim$, →, and all brace structure. You are rewriting the English content inside commands, not the LaTeX syntax itself.
+4. Preserve original spacing/formatting quirks around commands even if they look inconsistent.
+5. If a unit has nothing relevant to improve for this job description, return it unchanged with "modified": false rather than forcing an irrelevant keyword in.
+6. For Technical Skills units specifically:
+   - Input format: Each unit is purely a comma-separated list of skills belonging to that category (e.g. "\\textbf{{Node.js}}, \\textbf{{Express.js}}, REST APIs...").
+   - Categorization: Only append relevant new skills to their LOGICAL category:
+     * Stack: Core programming languages, full stack frameworks, runtime/OS environments (e.g. Python, TypeScript, React, Linux).
+     * Backend: Server frameworks, databases/queues, backend API tools (e.g. FastAPI, BullMQ, Docker).
+     * Database: Databases and caching systems (e.g. Redis, PostgreSQL).
+     * Cloud & DevOps: CI/CD, cloud providers, containerization, CLI/OS (e.g. Docker, Linux, Bash, Git).
+     * AI & Integrations: AI/LLM tools, SDKs, agent libraries (e.g. Cursor, Claude code, LangChain).
+     Never dump all keywords blindly into every category. Only append 1-3 highly relevant keywords to the matching category.
+   - Output format: Return ONLY the comma-separated list of skills. Do NOT output category headers (e.g. do not output "\\textbf{{Stack}}{{:") or outer enclosing braces.
+   - For bold items, use \\textbf{{Item}}. Make sure every "\\textbf{{" has a matching "}}".
 
 Respond with a valid JSON object matching this schema:
 {{"units": [{{"id": "...", "rewritten": "...", "modified": false}}]}}
@@ -63,13 +73,19 @@ def format_units_to_rewrite(section_units: List[ResumeUnit]) -> str:
     return "\n\n".join(lines)
 
 
+def chunk_units(units: List[ResumeUnit], chunk_size: int = 4) -> List[List[ResumeUnit]]:
+    """Splits a list of units into smaller batches to respect LLM token budgets and rate limits."""
+    return [units[i:i + chunk_size] for i in range(0, len(units), chunk_size)]
+
+
 async def arewrite_bullets(
     job_description: str,
     ats_keywords: Optional[ATSKeywords] = None,
     file_name: Path = Path(__file__).resolve().parents[2] / "resume.tex"
 ) -> Dict[str, SectionOutput]:
     """
-    Asynchronously runs section-specific rewriting chains in parallel via asyncio.gather.
+    Asynchronously runs section-specific rewriting chains with sub-batching for large sections
+    and rate-limiting governance to stay safely within Groq TPM limits.
     """
     if ats_keywords is None:
         ats_keywords = extract_ats_keywords(job_description)
@@ -86,59 +102,54 @@ async def arewrite_bullets(
     hard_skills_str = ", ".join(ats_keywords.hard_skills)
     soft_skills_str = ", ".join(ats_keywords.soft_skills)
 
-    # Prepare inputs for each section
-    summary_input = {
-        "section_name": "Summary",
-        "job_description": job_description,
-        "hard_skills": hard_skills_str,
-        "soft_skills": soft_skills_str,
-        "units_to_rewrite": format_units_to_rewrite(summary_units),
-    }
-
-    skills_input = {
-        "section_name": "Technical Skills",
-        "job_description": job_description,
-        "hard_skills": hard_skills_str,
-        "soft_skills": soft_skills_str,
-        "units_to_rewrite": format_units_to_rewrite(skills_units),
-    }
-
-    experience_input = {
-        "section_name": "Experience",
-        "job_description": job_description,
-        "hard_skills": hard_skills_str,
-        "soft_skills": soft_skills_str,
-        "units_to_rewrite": format_units_to_rewrite(experience_units),
-    }
-
-    projects_input = {
-        "section_name": "Projects",
-        "job_description": job_description,
-        "hard_skills": hard_skills_str,
-        "soft_skills": soft_skills_str,
-        "units_to_rewrite": format_units_to_rewrite(project_units),
-    }
-
-    semaphore = asyncio.Semaphore(2)
+    # Concurrency control: 1 request at a time with pacing prevents tripping Groq 8,000 TPM limit
+    semaphore = asyncio.Semaphore(1)
 
     async def run_section(
         input_data: dict,
         raw_units: List[ResumeUnit],
-        max_retries: int = 3
+        max_retries: int = 5
     ) -> SectionOutput:
+        from resume_customizer.merger import auto_repair_unit_braces, is_braces_balanced
+        import re
         sec_name = input_data["section_name"]
+        raw_units_map = {u["id"]: u["text"] for u in raw_units}
+
         async with semaphore:
+            # Pacing pause between sequential calls to stay comfortably under Groq 8,000 TPM
+            await asyncio.sleep(2.0)
             for attempt in range(max_retries):
                 try:
-                    return await section_chain.ainvoke(input_data)
+                    res: SectionOutput = await section_chain.ainvoke(input_data)
+                    # Auto-heal and validate brace balance for modified units
+                    has_unrecoverable_brace_error = False
+                    for unit in res.units:
+                        if unit.modified and not is_braces_balanced(unit.rewritten):
+                            orig_text = raw_units_map.get(unit.id, "")
+                            repaired = auto_repair_unit_braces(orig_text, unit.rewritten)
+                            if is_braces_balanced(repaired):
+                                unit.rewritten = repaired
+                            else:
+                                has_unrecoverable_brace_error = True
+                                break
+
+                    if has_unrecoverable_brace_error:
+                        raise ValueError(f"Unbalanced curly braces in {sec_name} output that could not be auto-repaired.")
+
+                    return res
                 except Exception as e:
                     err_msg = str(e).lower()
                     if "429" in err_msg or "rate_limit" in err_msg:
-                        wait_sec = 8.0 * (attempt + 1)
-                        print(f"Rate limit hit for {sec_name}, retrying in {wait_sec}s (attempt {attempt + 1}/{max_retries})...")
+                        # Extract exact wait time requested by Groq if available
+                        wait_match = re.search(r'try again in (\d+(?:\.\d+)?)\s*s', err_msg)
+                        if wait_match:
+                            wait_sec = float(wait_match.group(1)) + 1.5
+                        else:
+                            wait_sec = 10.0 * (attempt + 1)
+                        print(f"Rate limit hit for {sec_name}, retrying in {wait_sec:.1f}s (attempt {attempt + 1}/{max_retries})...")
                         await asyncio.sleep(wait_sec)
-                    elif "validation" in err_msg or "json" in err_msg or "400" in err_msg:
-                        print(f"JSON/formatting issue for {sec_name}, retrying in 2s (attempt {attempt + 1}/{max_retries})...")
+                    elif "validation" in err_msg or "json" in err_msg or "400" in err_msg or "brace" in err_msg:
+                        print(f"Formatting/brace issue for {sec_name}, retrying in 2s (attempt {attempt + 1}/{max_retries})...")
                         await asyncio.sleep(2)
                     else:
                         print(f"Unexpected error in {sec_name}: {e}")
@@ -152,13 +163,65 @@ async def arewrite_bullets(
                 ]
             )
 
-    print("Running 4 section chains in parallel...")
-    summary_out, skills_out, exp_out, proj_out = await asyncio.gather(
-        run_section(summary_input, summary_units),
-        run_section(skills_input, skills_units),
-        run_section(experience_input, experience_units),
-        run_section(projects_input, project_units),
+    print("Running section rewriting pipeline with request governance...")
+
+    # 1. Summary
+    summary_input = {
+        "section_name": "Summary",
+        "job_description": job_description,
+        "hard_skills": hard_skills_str,
+        "soft_skills": soft_skills_str,
+        "units_to_rewrite": format_units_to_rewrite(summary_units),
+    }
+
+    # 2. Technical Skills
+    skills_input = {
+        "section_name": "Technical Skills",
+        "job_description": job_description,
+        "hard_skills": hard_skills_str,
+        "soft_skills": soft_skills_str,
+        "units_to_rewrite": format_units_to_rewrite(skills_units),
+    }
+
+    # 3. Projects
+    projects_input = {
+        "section_name": "Projects",
+        "job_description": job_description,
+        "hard_skills": hard_skills_str,
+        "soft_skills": soft_skills_str,
+        "units_to_rewrite": format_units_to_rewrite(project_units),
+    }
+
+    # 4. Experience (Sub-batched into chunks of max 4 units to stay within token budgets)
+    exp_chunks = chunk_units(experience_units, chunk_size=4)
+    exp_tasks = []
+    for idx, chunk in enumerate(exp_chunks):
+        chunk_input = {
+            "section_name": f"Experience (Batch {idx + 1}/{len(exp_chunks)})",
+            "job_description": job_description,
+            "hard_skills": hard_skills_str,
+            "soft_skills": soft_skills_str,
+            "units_to_rewrite": format_units_to_rewrite(chunk),
+        }
+        exp_tasks.append(run_section(chunk_input, chunk))
+
+    # Execute all tasks with controlled concurrency
+    summary_task = run_section(summary_input, summary_units)
+    skills_task = run_section(skills_input, skills_units)
+    projects_task = run_section(projects_input, project_units)
+
+    summary_out, skills_out, proj_out, *exp_chunk_results = await asyncio.gather(
+        summary_task,
+        skills_task,
+        projects_task,
+        *exp_tasks
     )
+
+    # Combine sub-batched experience results
+    combined_exp_units: List[RewrittenUnit] = []
+    for chunk_res in exp_chunk_results:
+        combined_exp_units.extend(chunk_res.units)
+    exp_out = SectionOutput(units=combined_exp_units)
 
     return {
         "summary": summary_out,

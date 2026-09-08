@@ -16,9 +16,14 @@ class MergeResult(BaseModel):
     rejected_ids: List[str] = Field(default_factory=list)
 
 
-def is_braces_balanced(text: str) -> bool:
-    r"""Checks if curly braces are balanced, respecting escaped braces \{ and \}."""
+def check_braces(text: str) -> Tuple[bool, int, int]:
+    r"""
+    Scans text for curly braces, respecting escaped braces \{ and \} and comments %.
+    Returns:
+        (is_balanced, final_depth, min_depth)
+    """
     depth = 0
+    min_depth = 0
     i = 0
     in_comment = False
 
@@ -34,7 +39,7 @@ def is_braces_balanced(text: str) -> bool:
         if ch == '\\':
             # Guard against lone trailing backslash
             if i + 1 >= len(text):
-                return False
+                return False, depth, min_depth
             i += 2
             continue
 
@@ -47,12 +52,73 @@ def is_braces_balanced(text: str) -> bool:
             depth += 1
         elif ch == '}':
             depth -= 1
-            if depth < 0:
-                return False
+            if depth < min_depth:
+                min_depth = depth
 
         i += 1
 
-    return depth == 0
+    return (depth == 0 and min_depth >= 0), depth, min_depth
+
+
+def is_braces_balanced(text: str) -> bool:
+    r"""Checks if curly braces are balanced, respecting escaped braces \{ and \}."""
+    balanced, _, _ = check_braces(text)
+    return balanced
+
+
+def escape_unescaped_percent(text: str) -> str:
+    r"""Escapes any literal '%' that is not already escaped as '\%' in LaTeX."""
+    return re.sub(r'(?<!\\)%', r'\%', text)
+
+
+def auto_repair_unit_braces(original_text: str, rewritten_text: str) -> str:
+    r"""
+    Attempts to heal minor brace imbalances produced by LLMs on LaTeX units.
+    Common LLM slips:
+    1. Unescaped '%' commenting out the rest of the line and trailing braces -> escapes as '\%'
+    2. Dropping '{:' after \textbf{Category} -> restores '{:'
+    3. Forgetting the outer closing brace of `{: ...}` -> appends missing '}'
+    4. Adding an extra trailing '}' -> trims extraneous trailing '}'
+    """
+    repaired = rewritten_text.strip()
+
+    # Step 1: Escape unescaped '%' (in LaTeX, unescaped % comments out closing braces!)
+    if "%" in repaired:
+        repaired = escape_unescaped_percent(repaired)
+
+    is_bal, depth, min_depth = check_braces(repaired)
+    if is_bal:
+        return repaired
+
+    # Step 2: Dropped '{:' after \textbf{...}
+    cat_match = re.match(r'(\\textbf\{[^}]+\})\{:', original_text.strip())
+    if cat_match:
+        prefix = cat_match.group(1)
+        if repaired.startswith(prefix + ":"):
+            candidate = prefix + "{:" + repaired[len(prefix) + 1:]
+            if check_braces(candidate)[0]:
+                return candidate
+            repaired = candidate
+
+    is_bal, depth, min_depth = check_braces(repaired)
+    if is_bal:
+        return repaired
+
+    # Step 3: Missing closing brace(s) at end (depth > 0, min_depth >= 0)
+    if depth > 0 and min_depth >= 0:
+        candidate = repaired + ("}" * depth)
+        if check_braces(candidate)[0]:
+            return candidate
+
+    # Step 4: Extra trailing brace(s) (depth < 0)
+    if depth < 0 and repaired.endswith("}"):
+        for trim in range(1, abs(depth) + 1):
+            if repaired.endswith("}" * trim):
+                candidate = repaired[:-trim]
+                if check_braces(candidate)[0]:
+                    return candidate
+
+    return rewritten_text
 
 
 def extract_numbers(text: str) -> List[str]:
@@ -60,25 +126,44 @@ def extract_numbers(text: str) -> List[str]:
     return re.findall(r'\b\d+(?:\.\d+)?\b', text)
 
 
-def validate_unit(unit_id: str, original_text: str, rewritten_text: str) -> Tuple[bool, str]:
+def validate_unit(unit_id: str, original_text: str, rewritten_text: str) -> Tuple[bool, str, str]:
     """
     Pre-merge validation gate for an individual unit:
-    1. Confirm curly brace count is balanced.
-    2. Confirm no new or altered numbers/metrics vs original.
+    1. For skills: strips redundant category header if the model accidentally repeated it.
+    2. Confirm curly brace count is balanced (auto-repairs minor slips if possible).
+    3. Confirm no new or altered numbers/metrics vs original.
+    Returns (is_valid, reason, validated_text).
     """
-    if not is_braces_balanced(rewritten_text):
-        return False, f"[{unit_id}] REJECTED: Curly braces are unbalanced in rewritten text."
+    candidate_text = rewritten_text
+
+    # Defense-in-depth: If a SKILL unit redundantly contains the category header (e.g. \textbf{Stack}{: ...)
+    if unit_id.startswith("SKILL-"):
+        redundant_cat = re.match(r'\\textbf\{[^}]+\}\s*\{?:\s*(.*)', candidate_text, re.DOTALL)
+        if redundant_cat:
+            inner_candidate = redundant_cat.group(1).rstrip()
+            if inner_candidate.endswith("}") and not original_text.rstrip().endswith("}"):
+                inner_candidate = inner_candidate[:-1].rstrip()
+            candidate_text = inner_candidate
+
+    if not is_braces_balanced(candidate_text):
+        repaired = auto_repair_unit_braces(original_text, candidate_text)
+        if is_braces_balanced(repaired):
+            print(f"[PRE-MERGE GATE] [{unit_id}] Auto-repaired curly braces successfully.")
+            candidate_text = repaired
+        else:
+            return False, f"[{unit_id}] REJECTED: Curly braces are unbalanced in rewritten text.", rewritten_text
 
     orig_numbers = sorted(extract_numbers(original_text))
-    new_numbers = sorted(extract_numbers(rewritten_text))
+    new_numbers = sorted(extract_numbers(candidate_text))
 
     if orig_numbers != new_numbers:
         return (
             False,
-            f"[{unit_id}] REJECTED: Number/metric mismatch. Original numbers: {orig_numbers}, Rewritten numbers: {new_numbers}"
+            f"[{unit_id}] REJECTED: Number/metric mismatch. Original numbers: {orig_numbers}, Rewritten numbers: {new_numbers}",
+            candidate_text
         )
 
-    return True, "OK"
+    return True, "OK", candidate_text
 
 
 def validate_merged_latex(latex_text: str) -> Tuple[bool, str]:
@@ -140,24 +225,25 @@ def merge_rewrites(
             unchanged_count += 1
             continue
 
-        if rew.id not in units_by_id:
+        clean_id = rew.id.strip("[]").strip()
+        if clean_id not in units_by_id:
             print(f"[WARNING] Unknown unit id '{rew.id}' skipped.")
             unchanged_count += 1
             continue
 
-        original_unit = units_by_id[rew.id]
+        original_unit = units_by_id[clean_id]
         orig_text = original_unit["text"]
 
         # Pre-merge validation gate
-        is_valid, reason = validate_unit(rew.id, orig_text, rew.rewritten)
+        is_valid, reason, valid_text = validate_unit(clean_id, orig_text, rew.rewritten)
         if not is_valid:
             print(f"[PRE-MERGE GATE] {reason} -> Falling back to original.")
-            rejected_ids.append(rew.id)
+            rejected_ids.append(clean_id)
             unchanged_count += 1
             continue
 
         start, end = original_unit["span"]
-        replacements.append((rew.id, start, end, rew.rewritten))
+        replacements.append((clean_id, start, end, valid_text))
 
     # Sort descending by start offset (CRITICAL: prevents offset corruption)
     replacements.sort(key=lambda x: x[1], reverse=True)

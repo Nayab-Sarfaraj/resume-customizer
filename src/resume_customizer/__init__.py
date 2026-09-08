@@ -20,12 +20,14 @@ from .section_chains import (
 from .merger import (
     MergeResult,
     merge_rewrites,
+    check_braces,
+    is_braces_balanced,
+    auto_repair_unit_braces,
     validate_unit,
     validate_merged_latex,
 )
 from .main import (
     customize_resume,
-    compile_latex,
     main,
 )
 
@@ -45,9 +47,11 @@ __all__ = [
     "arewrite_bullets",
     "MergeResult",
     "merge_rewrites",
+    "check_braces",
+    "is_braces_balanced",
+    "auto_repair_unit_braces",
     "validate_unit",
     "validate_merged_latex",
     "customize_resume",
-    "compile_latex",
     "main",
 ]
